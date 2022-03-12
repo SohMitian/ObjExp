@@ -1,14 +1,9 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
 using System.Text;
 using UnityEngine.XR.ARFoundation;
-using UnityEngine.XR.ARSubsystems;
-using Unity.Collections.LowLevel.Unsafe;
 
-// [RequireComponent(typeof(ARPlaneManager))]
-// [RequireComponent(typeof(MeshFilter))]
 public class ObjExp : MonoBehaviour
 {
     ARSessionOrigin m_ARSessionOrigin;
@@ -19,7 +14,6 @@ public class ObjExp : MonoBehaviour
 
     void Awake()
     {
-        m_ARSessionOrigin = GetComponent<ARSessionOrigin>();
         m_ARPlaneManager = GetComponent<ARPlaneManager>();
     }
 
@@ -37,7 +31,7 @@ public class ObjExp : MonoBehaviour
 
     public void SaveOBJ()
     {
-        int lastIndex = 0;
+        
         // Mesh取得
         var sceneMeshesIndex = 0;
         sceneMeshes = new MeshFilter[m_ARPlaneManager.trackables.count];
@@ -60,76 +54,80 @@ public class ObjExp : MonoBehaviour
         sb.AppendLine("# OBJ File:" + Application.productName);
         sb.AppendLine("mtllib " + Application.productName + ".mtl");
 
-        string meshName = sceneMeshes[0].gameObject.name;
-        MeshFilter mf = sceneMeshes[0];
-        MeshRenderer mr = sceneMeshes[0].gameObject.GetComponent<MeshRenderer>();
-
-        // グループ名
-        sb.AppendLine("o " + mf.name);
-
-        // mesh出力
-        Mesh msh = mf.sharedMesh;
-
-        //頂点情報
-        foreach (Vector3 vx in msh.vertices)
+        // 全オブジェクトを対象としたループ
+        int lastIndex = 0;
+        for(int i = 0; i < sceneMeshes.Length; i++)
         {
-            Vector3 v = vx;
-            v = MultiplyVec3s(v, mf.gameObject.transform.lossyScale);
-            v = RotateAroundPoint(v, Vector3.zero, mf.gameObject.transform.rotation);
-            v += mf.gameObject.transform.position;
-            v.x *= -1;
-            sb.AppendLine("v " + v.x + " " + v.y + " " + v.z);
-        }
+            string meshName = sceneMeshes[i].gameObject.name;
+            MeshFilter mf = sceneMeshes[i];
+            MeshRenderer mr = sceneMeshes[i].gameObject.GetComponent<MeshRenderer>();
 
-        //法線情報
-        foreach (Vector3 vx in msh.normals)
-        {
-            Vector3 v = vx;
-            v = MultiplyVec3s(v, mf.gameObject.transform.lossyScale.normalized);      
-            v = RotateAroundPoint(v, Vector3.zero, mf.gameObject.transform.rotation);
-            v.x *= -1;
-            sb.AppendLine("vn " + v.x + " " + v.y + " " + v.z);
+            // グループ名
+            sb.AppendLine("o " + mf.name);
 
-        }
-        //UV情報
-        foreach (Vector2 v in msh.uv)
-        {
-            sb.AppendLine("vt " + v.x + " " + v.y);
-        }
-        //面情報
-        int faceOrder = (int)Mathf.Clamp((mf.gameObject.transform.lossyScale.x * mf.gameObject.transform.lossyScale.z), -1, 1);
+            // mesh出力
+            Mesh msh = mf.sharedMesh;
+            int faceOrder = (int)Mathf.Clamp((mf.gameObject.transform.lossyScale.x * mf.gameObject.transform.lossyScale.z), -1, 1);
 
-        for (int j=0; j < msh.subMeshCount; j++)
-        {
-            if(mr != null && j < mr.sharedMaterials.Length)
+
+            //頂点情報
+            foreach (Vector3 vx in msh.vertices)
             {
-                string matName = mr.sharedMaterials[j].name;
-                sb.AppendLine("usemtl " + matName);
-            }
-            else
-            {
-                sb.AppendLine("usemtl " + meshName + "_sm" + j);
+                Vector3 v = vx;
+                v = MultiplyVec3s(v, mf.gameObject.transform.lossyScale);
+                v = RotateAroundPoint(v, Vector3.zero, mf.gameObject.transform.rotation);
+                v += mf.gameObject.transform.position;
+                v.x *= -1;
+                sb.AppendLine("v " + v.x + " " + v.y + " " + v.z);
             }
 
-            int[] tris = msh.GetTriangles(j);
-            for(int t = 0; t < tris.Length; t+= 3)
+            //法線情報
+            foreach (Vector3 vx in msh.normals)
             {
-                int idx2 = tris[t] + 1 + lastIndex;
-                int idx1 = tris[t + 1] + 1 + lastIndex;
-                int idx0 = tris[t + 2] + 1 + lastIndex;
-                if(faceOrder < 0)
+                Vector3 v = vx;
+                v = MultiplyVec3s(v, mf.gameObject.transform.lossyScale.normalized);      
+                v = RotateAroundPoint(v, Vector3.zero, mf.gameObject.transform.rotation);
+                v.x *= -1;
+                sb.AppendLine("vn " + v.x + " " + v.y + " " + v.z);
+
+            }
+            //UV情報
+            foreach (Vector2 v in msh.uv)
+            {
+                sb.AppendLine("vt " + v.x + " " + v.y);
+            }
+            //面情報
+            for (int j=0; j < msh.subMeshCount; j++)
+            {
+                if(mr != null && j < mr.sharedMaterials.Length)
                 {
-                    sb.AppendLine("f " + ConstructOBJString(idx2) + " " + ConstructOBJString(idx1) + " " + ConstructOBJString(idx0));
+                    string matName = mr.sharedMaterials[j].name;
+                    sb.AppendLine("usemtl " + matName);
                 }
                 else
                 {
-                    sb.AppendLine("f " + ConstructOBJString(idx0) + " " + ConstructOBJString(idx1) + " " + ConstructOBJString(idx2));
+                    sb.AppendLine("usemtl " + meshName + "_sm" + j);
                 }
-                
-            }
-        }
-        lastIndex += msh.vertices.Length;
 
+                int[] tris = msh.GetTriangles(j);
+                for(int t = 0; t < tris.Length; t+= 3)
+                {
+                    int idx2 = tris[t] + 1 + lastIndex;
+                    int idx1 = tris[t + 1] + 1 + lastIndex;
+                    int idx0 = tris[t + 2] + 1 + lastIndex;
+                    if(faceOrder < 0)
+                    {
+                        sb.AppendLine("f " + ConstructOBJString(idx2) + " " + ConstructOBJString(idx1) + " " + ConstructOBJString(idx0));
+                    }
+                    else
+                    {
+                        sb.AppendLine("f " + ConstructOBJString(idx0) + " " + ConstructOBJString(idx1) + " " + ConstructOBJString(idx2));
+                    }
+                    
+                }
+            }
+        lastIndex += msh.vertices.Length;
+        }
         // 書き出し
         File.WriteAllText(_storagePath + "/" + Application.productName + ".obj", sb.ToString());
     }
