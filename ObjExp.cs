@@ -97,10 +97,7 @@ public class ObjExp : MonoBehaviour
             sb.AppendLine("vt " + v.x + " " + v.y);
         }
         //面情報
-        // int faceOrder = (int)Mathf.Clamp((mf.gameObject.transform.lossyScale.x * _obj.gameObject.transform.lossyScale.z), -1, 1);
         int faceOrder = (int)Mathf.Clamp((mf.gameObject.transform.lossyScale.x * mf.gameObject.transform.lossyScale.z), -1, 1);
-        // string matName = _obj.GetComponent<MeshRenderer>().sharedMaterial.name;
-        // sb.AppendLine("usemtl " + matName);
 
         for (int j=0; j < msh.subMeshCount; j++)
         {
